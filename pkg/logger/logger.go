@@ -6,7 +6,9 @@ import (
     "strings"
     "time"
     "os"
+    "sync"
     "runtime/debug"
+    "log"
 )
 
 /*
@@ -44,7 +46,48 @@ var DefaultOptions = Options{
 var SENTRY_DSN = ""
 var RUNNING_IN_PRODUCTION = false
 
+type SentryHook struct{}
+var wg sync.WaitGroup
+
+
+
+
+func (t *SentryHook) Run(
+    e *zerolog.Event,
+    level zerolog.Level,
+    message string,
+) {
+	log.Println("running the sentry hook!")
+	log.Println(message)
+    if level > zerolog.ErrorLevel {
+        wg.Add(1)
+        go func() {
+        	log.Println("gonna try and call the send to sentry func!")
+            _ = sendToSentry("", message)
+            wg.Done()
+        }()
+    } else {
+    	log.Println("had a problem deciphering the error level")
+    }
+}
+
+
+
+func sendToSentry(title, msg string) error {
+
+	//
+	// TODO: remove this once you make sure this code is working.
+	//
+	log.Println("sending this Error message to Sentry!!!! woo hoo!!!")
+	return nil
+}
+
+
 func Init(serviceName string) zerolog.Logger {
+
+
+
+
 
 	buildInfo, _ := debug.ReadBuildInfo()
 
@@ -55,6 +98,9 @@ func Init(serviceName string) zerolog.Logger {
 	}
 
 	env := strings.ToUpper(os.Getenv("ENVIRONMENT"))
+	//
+	// TODO: capitalize the value in there and shorten it to PROD...
+	//
 	if (env == "PRODUCTION") || (env == "PROD") {
 		RUNNING_IN_PRODUCTION = true
 		DefaultOptions.JSON = true
@@ -97,16 +143,20 @@ func Init(serviceName string) zerolog.Logger {
 
 	//logger := log.With().Str("service", service) // .Str("service", service)
 
+ 	//var loggerInstance zerolog
+
     if (RUNNING_IN_PRODUCTION) {
     	return zerolog.New(os.Stdout).With().Timestamp().Caller().
      	Str("service", service).
       	Str("go_version", buildInfo.GoVersion).
        	Str("region", region).
-        Str("environment", env).
-       	Logger()
+        Str("environment", env).Logger().Hook(&SentryHook{})
     } else {
-    	return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger()
+    	//loggerInstance := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller()
+     	return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger().Hook(&SentryHook{})
     }
+
+    //return loggerInstance.Logger()
 	//logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
 	//logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr})

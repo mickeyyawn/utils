@@ -5,7 +5,6 @@ import (
 )
 
 func main() {
-
     //
     // init a zerolog logger with the name of the service that
     // is calling it. for demo purpose we will call ourselves "Service B"
@@ -20,5 +19,10 @@ func main() {
     		Int("age", 42).
       		Bool("registered", true).
         	Msg("new customer signed up for our product!")
-
+    //
+    // write a debug message. Note: this will be ignored if you have
+    // set the "ENVIRONMENT" enviroment variable to PROD or PRODUCTION.
+    // If set to PROD/PRODUCTION we set the minimum log level to info or above.
+    //
+    l.Debug().Msg("This is my debug message. Really important debug information here.")
 }
