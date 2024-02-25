@@ -1,7 +1,7 @@
 package main
 
 import (
-    "github.com/mickeyyawn/utils/log"
+    "github.com/mickeyyawn/utils/pkg/logger"
 )
 
 func main() {
