@@ -1,14 +1,20 @@
 package logger
 
 import (
-    "github.com/rs/zerolog"
-    //"github.com/rs/zerolog/log"
-    "strings"
-    "time"
-    "os"
-    "sync"
-    "runtime/debug"
-    "log"
+	"github.com/rs/zerolog"
+	//"github.com/rs/zerolog/log"
+	//"github.com/buger/jsonparser"
+	"os"
+	"strings"
+	"time"
+	//"io"
+	//"encoding/json"
+	"log"
+	"runtime/debug"
+	"sync"
+	//"github.com/getsentry/raven-go"
+	//"github.com/getsentry/sentry-go"
+	//"encoding/json"
 )
 
 /*
@@ -25,12 +31,9 @@ func Test() {
     log.Error().Msg("Error message")
 } */
 
-
-
 /*
-	Assume we are in NOT in production...which means we go to the
-	lowest log level and not in JSON
-
+Assume we are in NOT in production...which means we go to the
+lowest log level and not in JSON
 */
 var DefaultOptions = Options{
 	LogLevel:        "trace",
@@ -47,31 +50,43 @@ var SENTRY_DSN = ""
 var RUNNING_IN_PRODUCTION = false
 
 type SentryHook struct{}
+
 var wg sync.WaitGroup
 
-
-
-
 func (t *SentryHook) Run(
-    e *zerolog.Event,
-    level zerolog.Level,
-    message string,
+	e *zerolog.Event,
+	level zerolog.Level,
+	message string,
 ) {
 	log.Println("running the sentry hook!")
 	log.Println(message)
-    if level > zerolog.ErrorLevel {
-        wg.Add(1)
-        go func() {
-        	log.Println("gonna try and call the send to sentry func!")
-            _ = sendToSentry("", message)
-            wg.Done()
-        }()
-    } else {
-    	log.Println("had a problem deciphering the error level")
-    }
+	log.Println(level)
+	//log.Println(e.)
+
+	//	dec := json.NewDecoder(bytes.NewReader(e.buf))
+
+	/*
+
+		pr, pw := io.Pipe()
+
+		dec := json.NewDecoder(pr)
+
+		err := dec.Decode(&e)
+		if err == io.EOF {
+			return
+		}
+		log.Println(e.Time)
+
+	*/
+
+	if level >= zerolog.ErrorLevel {
+		wg.Add(1)
+		go func() {
+			_ = sendToSentry("", message)
+			wg.Done()
+		}()
+	}
 }
-
-
 
 func sendToSentry(title, msg string) error {
 
@@ -79,20 +94,16 @@ func sendToSentry(title, msg string) error {
 	// TODO: remove this once you make sure this code is working.
 	//
 	log.Println("sending this Error message to Sentry!!!! woo hoo!!!")
+
 	return nil
 }
 
-
 func Init(serviceName string) zerolog.Logger {
-
-
-
-
 
 	buildInfo, _ := debug.ReadBuildInfo()
 
 	service := strings.ToLower(serviceName)
-	if (len(service) == 0) {
+	if len(service) == 0 {
 		// TODO: log/alert here that a service name was not passed and will
 		// not be used...
 	}
@@ -128,48 +139,40 @@ func Init(serviceName string) zerolog.Logger {
 	zerolog.TimestampFieldName = DefaultOptions.TimeFieldName
 	zerolog.TimeFieldFormat = DefaultOptions.TimeFieldFormat
 
-
-
-
-
-
 	/*
-	if !opts.JSON {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: DefaultOptions.TimeFieldFormat})
-	}
+		if !opts.JSON {
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: DefaultOptions.TimeFieldFormat})
+		}
 
 
-	 */
+	*/
 
 	//logger := log.With().Str("service", service) // .Str("service", service)
 
- 	//var loggerInstance zerolog
+	//var loggerInstance zerolog
 
-    if (RUNNING_IN_PRODUCTION) {
-    	return zerolog.New(os.Stdout).With().Timestamp().Caller().
-     	Str("service", service).
-      	Str("go_version", buildInfo.GoVersion).
-       	Str("region", region).
-        Str("environment", env).Logger().Hook(&SentryHook{})
-    } else {
-    	//loggerInstance := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller()
-     	return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger().Hook(&SentryHook{})
-    }
+	wg.Wait()
 
-    //return loggerInstance.Logger()
+	if RUNNING_IN_PRODUCTION {
+		return zerolog.New(os.Stdout).With().Timestamp().Caller().
+			Str("service", service).
+			Str("go_version", buildInfo.GoVersion).
+			Str("region", region).
+			Str("environment", env).Logger().Hook(&SentryHook{})
+	} else {
+		//loggerInstance := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller()
+		return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger().Hook(&SentryHook{})
+	}
+
+	//return loggerInstance.Logger()
 	//logger := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
 	//logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	//return logger.Logger()
 
-
 	// TODO: how to output Region, Environment each time !!!
 }
-
-
-
-
 
 type Options struct {
 	// LogLevel defines the minimum level of severity that app should log.
