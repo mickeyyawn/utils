@@ -83,6 +83,15 @@ if RUNNING_IN_PRODUCTION {
 	}
 
 
+
+	SENTRY_DSN := os.Getenv("SENTRY_DSN")
+	if SENTRY_DSN == "" {
+		// TODO: log/alert here that Sentry DSN was not set up and will
+		// not be used...
+		//return newLogger(lvl, os.Stderr), nil, nil
+	}
+
+
 func (t *SentryHook) Run(
 	e *zerolog.Event,
 	level zerolog.Level,

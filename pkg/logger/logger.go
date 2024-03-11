@@ -50,11 +50,15 @@ var RUNNING_IN_PRODUCTION = false
 
 func Init(serviceName string) zerolog.Logger {
 
+	//
+	// TODO: make the timestamp fields match polygon... ts ?
+	//
+
 	buildInfo, _ := debug.ReadBuildInfo()
 
 	service := strings.ToLower(serviceName)
 	if len(service) == 0 {
-		// TODO: log/alert here that a service name was not passed and will
+		// TODO: log/alert/panic here that a service name was not passed and will
 		// not be used...
 	}
 
@@ -69,13 +73,6 @@ func Init(serviceName string) zerolog.Logger {
 	} else {
 		// TODO: log/alert here that an environment was not passed in
 		// and this logger will default to local/debug...
-	}
-
-	SENTRY_DSN := os.Getenv("SENTRY_DSN")
-	if SENTRY_DSN == "" {
-		// TODO: log/alert here that Sentry DSN was not set up and will
-		// not be used...
-		//return newLogger(lvl, os.Stderr), nil, nil
 	}
 
 	region := os.Getenv("REGION")
