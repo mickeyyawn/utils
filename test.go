@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/mickeyyawn/utils/pkg/logger"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -33,6 +32,4 @@ func main() {
 	//err := errors.New("seems we have an error here")
 	//l.Error().Err(err).Msg("attaching the error")
 
-	ltwo := logger.InitV2("Service B")
-	ltwo.Info("sweeeeet...zap is working", zap.String("username", "johndoe"))
 }

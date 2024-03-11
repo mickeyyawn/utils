@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	//"io"
 	//"encoding/json"
-	"log"
+
 	"runtime/debug"
-	"sync"
 	//"github.com/getsentry/raven-go"
 	//"github.com/getsentry/sentry-go"
 	//"encoding/json"
@@ -46,57 +46,7 @@ var DefaultOptions = Options{
 	TimeFieldName:   "timestamp",
 }
 
-var SENTRY_DSN = ""
 var RUNNING_IN_PRODUCTION = false
-
-type SentryHook struct{}
-
-var wg sync.WaitGroup
-
-func (t *SentryHook) Run(
-	e *zerolog.Event,
-	level zerolog.Level,
-	message string,
-) {
-	log.Println("running the sentry hook!")
-	log.Println(message)
-	log.Println(level)
-	//log.Println(e.)
-
-	//	dec := json.NewDecoder(bytes.NewReader(e.buf))
-
-	/*
-
-		pr, pw := io.Pipe()
-
-		dec := json.NewDecoder(pr)
-
-		err := dec.Decode(&e)
-		if err == io.EOF {
-			return
-		}
-		log.Println(e.Time)
-
-	*/
-
-	if level >= zerolog.ErrorLevel {
-		wg.Add(1)
-		go func() {
-			_ = sendToSentry("", message)
-			wg.Done()
-		}()
-	}
-}
-
-func sendToSentry(title, msg string) error {
-
-	//
-	// TODO: remove this once you make sure this code is working.
-	//
-	log.Println("sending this Error message to Sentry!!!! woo hoo!!!")
-
-	return nil
-}
 
 func Init(serviceName string) zerolog.Logger {
 
@@ -151,17 +101,15 @@ func Init(serviceName string) zerolog.Logger {
 
 	//var loggerInstance zerolog
 
-	wg.Wait()
-
 	if RUNNING_IN_PRODUCTION {
 		return zerolog.New(os.Stdout).With().Timestamp().Caller().
 			Str("service", service).
 			Str("go_version", buildInfo.GoVersion).
 			Str("region", region).
-			Str("environment", env).Logger().Hook(&SentryHook{})
+			Str("environment", env).Logger()
 	} else {
 		//loggerInstance := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller()
-		return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger().Hook(&SentryHook{})
+		return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller().Logger()
 	}
 
 	//return loggerInstance.Logger()
