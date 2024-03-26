@@ -12,6 +12,9 @@ import (
 // ENVIRONMENT=production go run test.go
 // or dev
 // go run test.go
+//
+// or TEST_MODE
+// ENVIRONMENT=TEST_MODE go run test.go
 
 var l zerolog.Logger // our global logger for these examples
 

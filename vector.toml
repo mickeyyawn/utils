@@ -1,0 +1,22 @@
+[sources.zerolog_test]
+type = "file"
+data_dir = "/Users/mickeyyawn/repos/utils/temp"
+include = [ "/var/logs/ZEROLOG_TEST.log" ]
+
+[transforms.log_parser]
+type = "remap"
+inputs = [ "zerolog_test" ]
+source = '''
+. = parse_json!(.message)
+'''
+
+[sinks.parseable]
+type = "http"
+inputs = [ "log_parser" ]
+compression = "none"
+method = "post"
+auth.strategy = "basic"
+auth.password = "admin"
+auth.user = "admin"
+encoding.codec = "json"
+uri = "http://localhost:8000/api/v1/logstream/demo"

@@ -59,6 +59,7 @@ var DefaultOptions = ZeroLogOptions{
 */
 
 var RUNNING_IN_PRODUCTION = false
+var RUNNING_IN_TEST_MODE = false
 var LOG_LEVEL = zerolog.TraceLevel // default to trace. if we are running in prod we will raise to Info
 
 func setGlobalStateForZerolog() {
@@ -102,6 +103,14 @@ func Init(serviceName string, environment string, region string) zerolog.Logger 
 		//DefaultOptions.LogLevel = "info"
 	}
 
+	// test mode is a temporary thing, this can be removed at some point
+	// the goal is to output a physical log file somewhere so that it can be shipped
+	// by Vector to a local instance of Parseable
+	if strings.Contains(strings.ToUpper(os.Getenv("ENVIRONMENT")), "TEST_MODE") {
+		RUNNING_IN_TEST_MODE = true
+		LOG_LEVEL = zerolog.InfoLevel
+	}
+
 	//region := os.Getenv("REGION")
 	//if region == "" {
 	// TODO: log/alert here that a region was not passed in
@@ -129,6 +138,25 @@ func Init(serviceName string, environment string, region string) zerolog.Logger 
 
 	if RUNNING_IN_PRODUCTION {
 		loggerInstance = zerolog.New(os.Stdout)
+		return loggerInstance.With().Str("reg", region).
+			Str("env", environment).
+			Str("service", serviceName).
+			Str("go_v", buildInfo.GoVersion).Timestamp().Caller().Logger()
+	} else if RUNNING_IN_TEST_MODE {
+
+		// note:  This is assuming you have touched the following file and set CHMOD 777 on it
+		file, err := os.OpenFile(
+			"/var/logs/ZEROLOG_TEST.log",
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+			0664,
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		//defer file.Close()
+
+		loggerInstance = zerolog.New(file)
 		return loggerInstance.With().Str("reg", region).
 			Str("env", environment).
 			Str("service", serviceName).
