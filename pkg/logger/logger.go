@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 /*
@@ -58,12 +59,15 @@ var DefaultOptions = ZeroLogOptions{
 */
 
 var RUNNING_IN_PRODUCTION = false
+var LOG_LEVEL = zerolog.TraceLevel // default to trace. if we are running in prod we will raise to Info
 
 func setGlobalStateForZerolog() {
 	zerolog.TimestampFieldName = "t"           // set the name of of the timestamp field to something short
-	zerolog.TimeFieldFormat = time.RFC3339Nano //defaults to "time.RFC3339Nano"...explicitly set it so it is clear
+	zerolog.TimeFieldFormat = time.RFC3339Nano // defaults to "time.RFC3339Nano"...explicitly set it so it is clear
 	zerolog.LevelFieldName = "l"               // set the name of of the level field to something short
 	zerolog.MessageFieldName = "m"             // set the name of of the message field to something short
+	zerolog.ErrorFieldName = "err"
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }
 
 //
@@ -89,33 +93,13 @@ func Init(serviceName string, environment string, region string) zerolog.Logger 
 	setGlobalStateForZerolog()
 
 	buildInfo, _ := debug.ReadBuildInfo()
-	tags := make(map[string]string)
-	//Set key/value pairs using typical name[key] = val syntax.
+	//service := strings.ToLower(serviceName)
 
-	tags["env"] = "my super cool environment"
-	tags["reg"] = "us-east-1"
-	tags["go_v"] = buildInfo.GoVersion
-	tags["service"] = "my cool service name"
-
-	// HOW DO I SET THOSE
-
-	service := strings.ToLower(serviceName)
-	if len(service) == 0 {
-		// TODO: log/alert/panic here that a service name was not passed and will
-		// not be used...
-	}
-
-	env := strings.ToUpper(os.Getenv("ENVIRONMENT"))
-	//
-	// TODO: capitalize the value in there and shorten it to PROD...
-	//
-	if (env == "PRODUCTION") || (env == "PROD") {
+	if strings.Contains(strings.ToUpper(os.Getenv("ENVIRONMENT")), "PROD") {
 		RUNNING_IN_PRODUCTION = true
-		DefaultOptions.JSON = true
-		DefaultOptions.LogLevel = "info"
-	} else {
-		// TODO: log/alert here that an environment was not passed in
-		// and this logger will default to local/debug...
+		LOG_LEVEL = zerolog.InfoLevel
+		//DefaultOptions.JSON = true
+		//DefaultOptions.LogLevel = "info"
 	}
 
 	//region := os.Getenv("REGION")
@@ -123,8 +107,9 @@ func Init(serviceName string, environment string, region string) zerolog.Logger 
 	// TODO: log/alert here that a region was not passed in
 	// and this logger will default to local/debug...
 	//}
-	logLevel, _ := zerolog.ParseLevel(strings.ToLower(DefaultOptions.LogLevel))
-	zerolog.SetGlobalLevel(logLevel)
+	//logLevel, _ := zerolog.Level(LOG_LEVEL)
+	//zerolog.SetGlobalLevel(logLevel)
+	zerolog.SetGlobalLevel(LOG_LEVEL)
 
 	//log.Logger = log.With().Str("env", "ENVIORNMENT").Logger()
 	//log.Logger = log.With().Str("reg", "REGION").Logger()
@@ -144,12 +129,27 @@ func Init(serviceName string, environment string, region string) zerolog.Logger 
 
 	if RUNNING_IN_PRODUCTION {
 		loggerInstance = zerolog.New(os.Stdout)
+		return loggerInstance.With().Str("reg", region).
+			Str("env", environment).
+			Str("service", serviceName).
+			Str("go_v", buildInfo.GoVersion).Timestamp().Caller().Logger()
 	} else {
 		//loggerInstance := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Str("service", service).Caller()
 		loggerInstance = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr})
+		return loggerInstance.With().Timestamp().Caller().Logger()
 	}
 
-	return loggerInstance.With().Fields(tags).Logger()
+	/*
+
+	 logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	    logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+	        return c.Str("name", "john")
+	    })
+
+	*/
+
+	//loggerInstance = loggerInstance.With().Str("go_version", buildInfo.GoVersion)
 
 	/*
 
